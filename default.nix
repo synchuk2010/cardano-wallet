@@ -14,5 +14,5 @@
 }:
 
 {
-  inherit pkgs;
+  inherit pkgs iohkLib;
 }
