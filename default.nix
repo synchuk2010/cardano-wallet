@@ -15,4 +15,6 @@
 
 {
   inherit pkgs iohkLib;
+
+  cardano-http-bridge = import ./nix/cardano-http-bridge.nix { inherit pkgs; };
 }
