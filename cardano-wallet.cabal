@@ -49,6 +49,8 @@ library
       Cardano.Wallet.Binary
     , Cardano.Wallet.Binary.Helpers
     , Cardano.Wallet.Binary.Packfile
+    , Cardano.Wallet.Node
+    , Cardano.Wallet.Node.Types
     , Cardano.Wallet.Node.RustCardano
     , Cardano.Wallet.Primitive
   other-modules:
