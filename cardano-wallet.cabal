@@ -107,3 +107,4 @@ test-suite unit
     , Cardano.Wallet.BinarySpec
     , Cardano.Wallet.Binary.PackfileSpec
     , Cardano.Wallet.PrimitiveSpec
+    , Cardano.Wallet.NodeSpec
