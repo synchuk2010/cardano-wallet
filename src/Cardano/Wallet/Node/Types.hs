@@ -1,8 +1,9 @@
 module Cardano.Wallet.Node.Types
     ( EpochIndex, SlotNumber, Slot ) where
 
+import Data.Word
+    ( Word16, Word64 )
 import Prelude
-import Data.Word (Word64, Word16)
 
 data ErrGetNextBlocks
     = ErrGetNextBlocks

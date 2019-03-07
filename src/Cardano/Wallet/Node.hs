@@ -1,16 +1,20 @@
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Cardano.Wallet.Node
     ( nextBlocks
     ) where
 
+import Numeric.Natural
+    ( Natural )
 import Prelude
-import Numeric.Natural (Natural)
 
-import Cardano.Wallet.Node.Types (EpochIndex, SlotNumber, Slot)
-import Cardano.Wallet.Node.RustCardano (NetworkLayer(..), newNetworkLayer)
-import Cardano.Wallet.Primitive (Block(..), BlockHeader(..))
+import Cardano.Wallet.Node.RustCardano
+    ( NetworkLayer (..), newNetworkLayer )
+import Cardano.Wallet.Node.Types
+    ( EpochIndex, Slot, SlotNumber )
+import Cardano.Wallet.Primitive
+    ( Block (..), BlockHeader (..) )
 
 blockSlot :: BlockHeader -> Slot
 blockSlot bh = (epochIndex bh, slotNumber bh)
