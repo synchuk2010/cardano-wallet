@@ -8,32 +8,47 @@ module Cardano.Wallet.Node.RustCardano
     , newNetworkLayer
     ) where
 
+import Data.Text
+    ( Text )
 import Prelude
-import Data.Text (Text)
 
-import           Network.HTTP.Client              (Manager, defaultRequest,
-                                                   httpLbs, path, port,
-                                                   method, requestBody,
-                                                   responseBody, responseStatus)
-import qualified Network.HTTP.Client              as HTTP
-import qualified Data.ByteString.Char8            as B8
-import qualified Data.ByteString.Lazy             as BL
-import           Data.ByteArray.Encoding          (convertToBase, Base (Base16))
+import Data.ByteArray.Encoding
+    ( Base (Base16), convertToBase )
+import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString.Lazy as BL
+import Network.HTTP.Client
+    ( Manager
+    , defaultRequest
+    , httpLbs
+    , method
+    , path
+    , port
+    , requestBody
+    , responseBody
+    , responseStatus
+    )
+import qualified Network.HTTP.Client as HTTP
 
-import qualified Data.ByteString                  as BS
-import qualified Data.Text.Encoding               as T
-import           Data.ByteString                  (ByteString)
-import Data.Word (Word16, Word64)
-import qualified Codec.CBOR.Decoding              as CBOR
-import qualified Codec.CBOR.Encoding              as CBOR
-import qualified Codec.CBOR.Read                  as CBOR
-import qualified Codec.CBOR.Write                 as CBOR
-import Control.Exception (throwIO)
-import Control.Monad (void)
+import qualified Codec.CBOR.Decoding as CBOR
+import qualified Codec.CBOR.Encoding as CBOR
+import qualified Codec.CBOR.Read as CBOR
+import qualified Codec.CBOR.Write as CBOR
+import Control.Exception
+    ( throwIO )
+import Control.Monad
+    ( void )
+import Data.ByteString
+    ( ByteString )
+import qualified Data.ByteString as BS
+import qualified Data.Text.Encoding as T
+import Data.Word
+    ( Word16, Word64 )
 
-import Cardano.Wallet.Primitive (Hash (..), BlockHeader(..), Block(..), Hash (..))
 import Cardano.Wallet.Binary
-import Cardano.Wallet.Binary.Packfile (decodePackfile, PackfileError (..))
+import Cardano.Wallet.Binary.Packfile
+    ( PackfileError (..), decodePackfile )
+import Cardano.Wallet.Primitive
+    ( Block (..), BlockHeader (..), Hash (..) )
 
 -- newtype NetworkName = NetworkName Text
 --     deriving (Show, Eq)
