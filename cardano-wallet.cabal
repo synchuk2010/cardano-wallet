@@ -39,17 +39,26 @@ library
     , cryptonite
     , deepseq
     , digest
+    , http-api-data
+    , http-media
     , memory
+    , servant
+    , servant-client
+    , servant-server
+    , text
     , transformers
   hs-source-dirs:
       src
   exposed-modules:
-      Cardano.Wallet.Binary
-      Cardano.Wallet.Binary.Packfile
-      Cardano.Wallet.Primitive
+      Cardano.HttpBridge.Api
+    , Cardano.HttpBridge.Client
+    , Cardano.Wallet.Binary
+    , Cardano.Wallet.Binary.Packfile
+    , Cardano.Wallet.Primitive
   other-modules:
-      Paths_cardano_wallet
-
+      Codec.CBOR.Extra
+    , Paths_cardano_wallet
+    , Servant.Extra.ContentTypes
 
 executable cardano-wallet-server
   default-language:
