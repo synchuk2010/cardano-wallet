@@ -5,10 +5,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Cardano.Wallet.ChainProducer.RustCardano
-    ( nextBlocks
-    , RustBackend
+    ( RustBackend
     , runRustBackend
-    , runRustBackend'
     ) where
 
 import Control.Monad.Except
@@ -54,9 +52,6 @@ blockIsBefore s = (< s) . blockSlot . header
 blockIsBetween :: SlotId -> SlotId -> Block -> Bool
 blockIsBetween start end b = blockIsAfter start b && blockIsBefore end b
 
-getNetwork :: RustBackend NetworkLayer
-getNetwork = ask
-
 newtype RustBackend a = RustBackend {
     runRB :: ReaderT NetworkLayer IO a
     } deriving (Monad, Applicative, Functor, MonadReader NetworkLayer, MonadIO)
@@ -64,21 +59,20 @@ newtype RustBackend a = RustBackend {
 runRustBackend :: NetworkLayer -> RustBackend a -> IO a
 runRustBackend network action = runReaderT (runRB action) network
 
-runRustBackendTest :: RustBackend a -> IO a
-runRustBackendTest action = do
-    -- fixme: use a config
-    network <- newNetworkLayer "mainnet"
-    runRustBackend network action
-
-runRustBackend' :: ExceptT e RustBackend a -> IO (Either e a)
-runRustBackend' = runRustBackendTest . runExceptT
+getNetwork :: RustBackend NetworkLayer
+getNetwork = ask
 
 instance MonadChainProducer RustBackend where
     nextBlocks = rbNextBlocks
 
+-- fixme: This will be quite inefficient for at least two reasons.
+-- 1. If the number of blocks is small, it will fetch the same epoch pack file
+--    repeatedly.
+-- 2. Fetching the tip block and working backwards is not ideal.
+-- We will keep it for now, and it can be improved later.
 rbNextBlocks
     :: SlotCount -- ^ Number of blocks to retrieve
-    -> SlotId -- ^ Starting point
+    -> SlotId    -- ^ Starting point
     -> ExceptT ErrGetNextBlocks RustBackend [Block]
 rbNextBlocks numBlocks start = ExceptT $ fmap Right $ do -- fixme: use ExceptT in network layer
     network <- getNetwork
@@ -134,7 +128,6 @@ fetchBlocksFromTip network start tip = reverse <$> workBackwards tip
     where
         workBackwards bh = do
             block <- getBlock network (prevBlockHash bh)
-            putStrLn $ "Got block " <> (show $ epochIndex (header block)) <> "." <> (show $ slotNumber (header block))
             if blockIsAfter start block
                 then do
                     blocks <- workBackwards (header block)

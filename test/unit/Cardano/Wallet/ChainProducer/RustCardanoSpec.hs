@@ -9,6 +9,8 @@ import Control.Monad.IO.Class
 import Test.Hspec
     ( Spec, SpecWith (..), before, describe, it, shouldBe )
 
+import Cardano.Wallet.ChainProducer
+    ( nextBlocks )
 import Cardano.Wallet.ChainProducer.MockNetworkLayer
 import Cardano.Wallet.ChainProducer.RustCardano
 import Cardano.Wallet.ChainProducer.RustCardano.NetworkLayer
@@ -38,6 +40,10 @@ getNextBlocksSpec network = do
     let run = runRustBackend network . unsafeRunExceptT
 
     it "should get something from the latest epoch" $ do
+        blocks <- run $ nextBlocks 1000 (SlotId 106 1000)
+        length blocks `shouldBe` 492
+
+    it "should get something from an unstable epoch" $ do
         blocks <- run $ nextBlocks 1000 (SlotId 105 17000)
         length blocks `shouldBe` 1000
 
