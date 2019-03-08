@@ -1,19 +1,25 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Cardano.Wallet.Node
+module Cardano.Wallet.ChainProducer.RustCardano
     ( nextBlocks
+    , RustBackend
+    , runRustBackend
+    , runRustBackend'
     ) where
 
-import Numeric.Natural
-    ( Natural )
+import Control.Monad.Except
+import Control.Monad.Reader
 import Prelude
 
-import Cardano.Wallet.Node.RustCardano
+import Cardano.Wallet.ChainProducer
+import Cardano.Wallet.ChainProducer.TempNetwork
     ( NetworkLayer (..), newNetworkLayer )
 import Cardano.Wallet.Primitive
     ( Block (..), BlockHeader (..) )
-import Cardano.Wallet.Slotting ( SlotId (..), EpochIndex, addSlots, slotsPerEpoch )
+import Cardano.Wallet.Slotting
+    ( EpochIndex, SlotCount, SlotId (..), addSlots, slotsPerEpoch )
 
 blockSlot :: BlockHeader -> SlotId
 blockSlot bh = SlotId (epochIndex bh) (slotNumber bh)
@@ -21,7 +27,7 @@ blockSlot bh = SlotId (epochIndex bh) (slotNumber bh)
 -- | Calculates which epochs to fetch, given a quantity of blocks, and the start
 -- point.  Takes into account the latest slot available, and that the most
 -- recent epoch is not available in a pack file.
-epochRange :: Natural -- ^ Number of blocks
+epochRange :: SlotCount -- ^ Number of blocks
            -> SlotId -- ^ Start point
            -> SlotId -- ^ Latest slot available
            -> [EpochIndex]
@@ -43,38 +49,49 @@ blockIsBefore s = (< s) . blockSlot . header
 blockIsBetween :: SlotId -> SlotId -> Block -> Bool
 blockIsBetween start end b = blockIsAfter start b && blockIsBefore end b
 
--- fixme: get this from environment
-getNetwork :: IO NetworkLayer
-getNetwork = newNetworkLayer "mainnet"
+getNetwork :: RustBackend NetworkLayer
+getNetwork = ask
 
+newtype RustBackend a = RustBackend {
+    runRB :: ReaderT NetworkLayer IO a
+    } deriving (Monad, Applicative, Functor, MonadReader NetworkLayer, MonadIO)
 
-data ErrGetNextBlocks
-    = ErrGetNextBlocks
-    deriving (Show, Eq)
+runRustBackend :: RustBackend a -> IO a
+runRustBackend action = do
+    -- fixme: use a config
+    network <- newNetworkLayer "mainnet"
+    runReaderT (runRB action) network
 
--- | Get some blocks from the chain producer.
---
--- This may retrieve less than the requested number of blocks.
--- It might return no blocks at all.
-nextBlocks
-    :: forall m. (m ~ IO)
-    => Natural -- ^ Number of blocks to retrieve
+runRustBackend' :: ExceptT e RustBackend a -> IO (Either e a)
+runRustBackend' = runRustBackend . runExceptT
+
+instance MonadChainProducer RustBackend where
+    nextBlocks = rbNextBlocks
+
+rbNextBlocks
+    :: SlotCount -- ^ Number of blocks to retrieve
     -> SlotId -- ^ Starting point
-    -> m [Block]
---    -> ExceptT ErrGetNextBlocks m [Block]
-nextBlocks numBlocks start = do
+    -> ExceptT ErrGetNextBlocks RustBackend [Block]
+rbNextBlocks numBlocks start = ExceptT $ fmap Right $ do -- fixme: use ExceptT in network layer
     network <- getNetwork
-    tip <- getNetworkTip network
+    tip <- liftIO $ getNetworkTip network
+
     -- grab blocks from epoch pack files
     let epochs = epochRange numBlocks start (blockSlot tip)
         end = addSlots numBlocks start
-    epochBlocks <- concat <$> mapM (getEpoch network) epochs
+
+    liftIO $ putStrLn $ "epochs: " <> show epochs
+    epochBlocks <- concat <$> mapM (liftIO . getEpoch network) epochs
+
     -- grab remaining blocks from the latest epoch if necessary
     lastBlocks <- if null epochs || siEpoch end > maximum epochs
-        then fetchBlocksFromTip network start tip
+        then liftIO $ fetchBlocksFromTip network start tip
         else pure []
-    -- return blocks in order
-    pure $ filter (blockIsBetween start end) epochBlocks ++ filter (blockIsBefore end) lastBlocks
+
+    -- return blocks in order, excluding blocks outside the given range
+    let epochBlocks' = filter (blockIsBetween start end) epochBlocks
+        lastBlocks' = filter (blockIsBefore end) lastBlocks
+    pure (epochBlocks' ++ lastBlocks')
 
 -- Note: this is working around a limitation of the cardano-http-bridge API.
 -- fixme: it does not fetch the tip block itself.

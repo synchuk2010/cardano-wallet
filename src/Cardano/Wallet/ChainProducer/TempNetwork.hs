@@ -2,7 +2,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Cardano.Wallet.Node.RustCardano
+module Cardano.Wallet.ChainProducer.TempNetwork
     ( NetworkConfig(..)
     , NetworkLayer(..)
     , newNetworkLayer

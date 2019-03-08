@@ -41,6 +41,7 @@ library
     , deepseq
     , http-client
     , memory
+    , mtl
     , text
     , transformers
   hs-source-dirs:
@@ -49,9 +50,9 @@ library
       Cardano.Wallet.Binary
     , Cardano.Wallet.Binary.Helpers
     , Cardano.Wallet.Binary.Packfile
-    , Cardano.Wallet.Node
-    , Cardano.Wallet.Node.Types
-    , Cardano.Wallet.Node.RustCardano
+    , Cardano.Wallet.ChainProducer
+    , Cardano.Wallet.ChainProducer.RustCardano
+    , Cardano.Wallet.ChainProducer.TempNetwork
     , Cardano.Wallet.Primitive
     , Cardano.Wallet.Slotting
   other-modules:
@@ -98,6 +99,7 @@ test-suite unit
     , containers
     , hspec
     , memory
+    , mtl
     , QuickCheck
   type:
      exitcode-stdio-1.0
