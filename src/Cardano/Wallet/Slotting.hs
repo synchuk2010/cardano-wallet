@@ -8,6 +8,7 @@ module Cardano.Wallet.Slotting
     , slotsPerEpoch
     , addSlots
     , slotNext
+    , slotPrev
     ) where
 
 import Prelude
@@ -42,3 +43,7 @@ addSlots n (SlotId e sl) = SlotId (e + fromIntegral e') (fromIntegral sl')
 
 slotNext :: SlotId -> SlotId
 slotNext = addSlots 1
+
+slotPrev :: SlotId -> SlotId
+slotPrev (SlotId ep 0) = SlotId (ep - 1) (fromIntegral slotsPerEpoch - 1)
+slotPrev (SlotId ep sl) = SlotId ep (sl - 1)

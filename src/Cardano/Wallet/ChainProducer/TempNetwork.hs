@@ -66,7 +66,6 @@ data NetworkLayer = NetworkLayer
     { getBlock      :: Hash "BlockHeader" -> IO Block
     , getEpoch      :: Word64 -> IO [Block]
     , getNetworkTip :: IO BlockHeader
-    , postSignedTx  :: BS.ByteString -> IO ()
     }
 
 
@@ -78,7 +77,6 @@ mkNetworkLayer network manager = NetworkLayer
     { getBlock = _getBlock network manager . hashToBase16
     , getEpoch = _getEpoch network manager
     , getNetworkTip = _getNetworkTip network manager
-    , postSignedTx = undefined -- _postSignedTx network manager
     }
 
 

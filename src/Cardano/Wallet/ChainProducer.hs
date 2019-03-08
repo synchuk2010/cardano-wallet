@@ -6,6 +6,7 @@ module Cardano.Wallet.ChainProducer
 
 import Prelude
 
+import Control.Exception ( Exception )
 import Control.Monad.Except ( ExceptT )
 import Cardano.Wallet.Slotting ( SlotId, SlotCount )
 import Cardano.Wallet.Primitive ( Block )
@@ -24,3 +25,5 @@ class MonadChainProducer m where
 data ErrGetNextBlocks
     = GetNextBlocksError
     deriving (Show, Eq)
+
+instance Exception ErrGetNextBlocks
