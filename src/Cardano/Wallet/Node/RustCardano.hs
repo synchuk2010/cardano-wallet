@@ -97,11 +97,6 @@ _getBlock network manager hash = do
     let block = unsafeDeserialiseFromBytes decodeBlock $ responseBody res
     return block
 
-{-
-decodePackfile :: BL.ByteString -> Either String [BS.ByteString]
-decodePackfile = undefined -- in another branch
--}
-
 deserialiseEpoch :: BL.ByteString -> Either PackfileError [Block]
 deserialiseEpoch = fmap (map (unsafeDeserialiseFromBytes decodeBlock . BL.fromStrict)) . decodePackfile
 
