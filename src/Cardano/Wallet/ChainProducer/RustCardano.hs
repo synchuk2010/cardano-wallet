@@ -1,6 +1,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Cardano.Wallet.ChainProducer.RustCardano
     ( nextBlocks
@@ -11,15 +13,16 @@ module Cardano.Wallet.ChainProducer.RustCardano
 
 import Control.Monad.Except
 import Control.Monad.Reader
+import Control.Exception (Exception, tryJust)
 import Prelude
 
 import Cardano.Wallet.ChainProducer
 import Cardano.Wallet.ChainProducer.TempNetwork
-    ( NetworkLayer (..), newNetworkLayer )
+    ( NetworkLayer (..), NetworkLayerError, newNetworkLayer )
 import Cardano.Wallet.Primitive
     ( Block (..), BlockHeader (..) )
 import Cardano.Wallet.Slotting
-    ( EpochIndex, SlotCount, SlotId (..), addSlots, slotsPerEpoch )
+    ( EpochIndex, SlotCount, SlotId (..), addSlots, slotsPerEpoch, slotNext )
 
 blockSlot :: BlockHeader -> SlotId
 blockSlot bh = SlotId (epochIndex bh) (slotNumber bh)
@@ -56,14 +59,17 @@ newtype RustBackend a = RustBackend {
     runRB :: ReaderT NetworkLayer IO a
     } deriving (Monad, Applicative, Functor, MonadReader NetworkLayer, MonadIO)
 
-runRustBackend :: RustBackend a -> IO a
-runRustBackend action = do
+runRustBackend :: NetworkLayer -> RustBackend a -> IO a
+runRustBackend network action = runReaderT (runRB action) network
+
+runRustBackendTest :: RustBackend a -> IO a
+runRustBackendTest action = do
     -- fixme: use a config
     network <- newNetworkLayer "mainnet"
-    runReaderT (runRB action) network
+    runRustBackend network action
 
 runRustBackend' :: ExceptT e RustBackend a -> IO (Either e a)
-runRustBackend' = runRustBackend . runExceptT
+runRustBackend' = runRustBackendTest . runExceptT
 
 instance MonadChainProducer RustBackend where
     nextBlocks = rbNextBlocks
@@ -79,13 +85,16 @@ rbNextBlocks numBlocks start = ExceptT $ fmap Right $ do -- fixme: use ExceptT i
     -- grab blocks from epoch pack files
     let epochs = epochRange numBlocks start (blockSlot tip)
         end = addSlots numBlocks start
+    epochBlocks <- concat <$> liftIO (getEpochs network epochs)
 
-    liftIO $ putStrLn $ "epochs: " <> show epochs
-    epochBlocks <- concat <$> mapM (liftIO . getEpoch network) epochs
+    -- find the start point after packed epochs
+    let start' = if null epochBlocks
+                     then start
+                     else slotNext . blockSlot . header . last $ epochBlocks
 
     -- grab remaining blocks from the latest epoch if necessary
-    lastBlocks <- if null epochs || siEpoch end > maximum epochs
-        then liftIO $ fetchBlocksFromTip network start tip
+    lastBlocks <- if end > start'
+        then liftIO $ fetchBlocksFromTip network start' tip
         else pure []
 
     -- return blocks in order, excluding blocks outside the given range
@@ -93,7 +102,30 @@ rbNextBlocks numBlocks start = ExceptT $ fmap Right $ do -- fixme: use ExceptT i
         lastBlocks' = filter (blockIsBefore end) lastBlocks
     pure (epochBlocks' ++ lastBlocks')
 
--- Note: this is working around a limitation of the cardano-http-bridge API.
+-- Fetch epoch blocks until one fails.
+getEpochs :: NetworkLayer -> [EpochIndex] -> IO [[Block]]
+getEpochs network = mapUntilError selector (getEpoch network)
+    where
+        selector :: NetworkLayerError -> Maybe ()
+        selector = const (Just ())
+
+-- | Apply an IO action to each element of a list, until an action fails, or
+-- there are no more elements. This is like mapM, except that the resulting list
+-- might be smaller than the given list.
+mapUntilError
+    :: Exception e
+    => (e -> Maybe ()) -- ^ Error handler
+    -> (a -> IO b) -- ^ Action to run
+    -> [a] -- ^ Elements
+    -> IO [b] -- ^ Results
+mapUntilError h get (e:es) = tryJust h (get e) >>= \case
+    Left () -> pure []
+    Right r -> do
+        rs <- mapUntilError h get es
+        pure (r:rs)
+mapUntilError _ _ [] = pure []
+
+-- Fetch blocks which are not in epoch pack files.
 -- fixme: it does not fetch the tip block itself.
 fetchBlocksFromTip :: NetworkLayer -> SlotId -> BlockHeader -> IO [Block]
 fetchBlocksFromTip network start tip = reverse <$> workBackwards tip
@@ -101,8 +133,8 @@ fetchBlocksFromTip network start tip = reverse <$> workBackwards tip
         workBackwards bh = do
             block <- getBlock network (prevBlockHash bh)
             putStrLn $ "Got block " <> (show $ epochIndex (header block)) <> "." <> (show $ slotNumber (header block))
-            if epochIndex (header block) /= epochIndex tip || not (blockIsAfter start block)
-                then pure []
-                else do
+            if blockIsAfter start block
+                then do
                     blocks <- workBackwards (header block)
                     pure (block:blocks)
+                else pure []

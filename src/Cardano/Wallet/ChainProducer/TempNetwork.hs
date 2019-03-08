@@ -5,6 +5,7 @@
 module Cardano.Wallet.ChainProducer.TempNetwork
     ( NetworkConfig(..)
     , NetworkLayer(..)
+    , NetworkLayerError(..)
     , newNetworkLayer
     ) where
 
@@ -34,7 +35,7 @@ import qualified Codec.CBOR.Encoding as CBOR
 import qualified Codec.CBOR.Read as CBOR
 import qualified Codec.CBOR.Write as CBOR
 import Control.Exception
-    ( throwIO )
+    ( Exception (..), throwIO )
 import Control.Monad
     ( void )
 import Data.ByteString
@@ -100,6 +101,12 @@ _getBlock network manager hash = do
 deserialiseEpoch :: BL.ByteString -> Either PackfileError [Block]
 deserialiseEpoch = fmap (map (unsafeDeserialiseFromBytes decodeBlock . BL.fromStrict)) . decodePackfile
 
+data NetworkLayerError
+    = DeserialiseError String
+    deriving (Show, Eq)
+
+instance Exception NetworkLayerError
+
 _getEpoch :: NetworkName -> Manager -> Word64 -> IO [Block]
 _getEpoch network manager n = do
     let req = defaultRequest
@@ -108,7 +115,7 @@ _getEpoch network manager n = do
             }
     res <- httpLbs req manager
     case deserialiseEpoch (responseBody res) of
-        Left e -> error $ "error decoding epoch: " <> show e
+        Left e -> throwIO $ DeserialiseError $ "error decoding epoch: " <> show e
         Right blocks -> pure blocks
 
 
