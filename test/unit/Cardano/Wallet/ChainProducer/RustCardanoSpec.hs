@@ -7,14 +7,14 @@ import Control.Exception
 import Control.Monad.Except
 import Control.Monad.IO.Class
 import Test.Hspec
-    ( Spec, describe, it, shouldBe )
-import Test.Hspec
-    ( SpecWith (..) )
+    ( Spec, SpecWith (..), before, describe, it, shouldBe )
 
 import Cardano.Wallet.ChainProducer.MockNetworkLayer
 import Cardano.Wallet.ChainProducer.RustCardano
-import Cardano.Wallet.ChainProducer.TempNetwork
-    ( NetworkLayer, newNetworkLayer )
+import Cardano.Wallet.ChainProducer.RustCardano.NetworkLayer
+    ( NetworkLayer )
+import Cardano.Wallet.ChainProducer.RustCardano.TempNetwork
+    ( newNetworkLayer )
 import Cardano.Wallet.Slotting
     ( EpochIndex, SlotId (..), slotPrev, slotsPerEpoch )
 
@@ -28,9 +28,9 @@ spec = do
         getNextBlocksSpec network
 
     {-
-    mainnet <- liftIO $ newNetworkLayer "mainnet"
-    describe "Getting next blocks with a real backend" $
-        getNextBlocksSpec mainnet
+    describe "Getting next blocks with a real backend" $ do
+        network <- liftIO newNetworkLayer "mainnet"
+        getNextBlocksSpec network
     -}
 
 getNextBlocksSpec :: NetworkLayer -> SpecWith ()

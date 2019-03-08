@@ -8,7 +8,7 @@ import Control.Exception
     ( throwIO )
 import qualified Data.ByteString.Char8 as S8
 
-import Cardano.Wallet.ChainProducer.TempNetwork
+import Cardano.Wallet.ChainProducer.RustCardano.NetworkLayer
     ( NetworkLayer (..), NetworkLayerError (..) )
 import Cardano.Wallet.Primitive
     ( Block (..), BlockHeader (..), Hash (..) )

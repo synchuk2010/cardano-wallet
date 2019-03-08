@@ -17,8 +17,10 @@ import Control.Exception (Exception, tryJust)
 import Prelude
 
 import Cardano.Wallet.ChainProducer
-import Cardano.Wallet.ChainProducer.TempNetwork
-    ( NetworkLayer (..), NetworkLayerError, newNetworkLayer )
+import Cardano.Wallet.ChainProducer.RustCardano.NetworkLayer
+    ( NetworkLayer (..), NetworkLayerError )
+import Cardano.Wallet.ChainProducer.RustCardano.TempNetwork
+    ( newNetworkLayer )
 import Cardano.Wallet.Primitive
     ( Block (..), BlockHeader (..) )
 import Cardano.Wallet.Slotting

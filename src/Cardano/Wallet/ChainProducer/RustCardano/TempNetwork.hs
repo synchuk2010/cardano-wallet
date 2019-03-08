@@ -1,11 +1,8 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Cardano.Wallet.ChainProducer.TempNetwork
+module Cardano.Wallet.ChainProducer.RustCardano.TempNetwork
     ( NetworkConfig(..)
-    , NetworkLayer(..)
-    , NetworkLayerError(..)
     , newNetworkLayer
     ) where
 
@@ -48,6 +45,8 @@ import Data.Word
 import Cardano.Wallet.Binary
 import Cardano.Wallet.Binary.Packfile
     ( PackfileError (..), decodePackfile )
+import Cardano.Wallet.ChainProducer.RustCardano.NetworkLayer
+    ( NetworkLayer (..), NetworkLayerError (..) )
 import Cardano.Wallet.Primitive
     ( Block (..), BlockHeader (..), Hash (..) )
 
@@ -60,14 +59,6 @@ data NetworkConfig = NetworkConfig
     , cfgHost :: ByteString
     , cfgPort :: Word16
     } deriving (Show)
-
--- | Endpoints of the cardano-http-bridge API.
-data NetworkLayer = NetworkLayer
-    { getBlock      :: Hash "BlockHeader" -> IO Block
-    , getEpoch      :: Word64 -> IO [Block]
-    , getNetworkTip :: IO BlockHeader
-    }
-
 
 hashToBase16 :: Hash a -> ByteString
 hashToBase16 (Hash h) = convertToBase Base16 h
@@ -85,7 +76,6 @@ newNetworkLayer network = do
     manager <- HTTP.newManager HTTP.defaultManagerSettings
     return $ mkNetworkLayer network manager
 
-
 _getBlock :: NetworkName -> Manager -> ByteString -> IO Block
 _getBlock network manager hash = do
     let req = defaultRequest
@@ -98,12 +88,6 @@ _getBlock network manager hash = do
 
 deserialiseEpoch :: BL.ByteString -> Either PackfileError [Block]
 deserialiseEpoch = fmap (map (unsafeDeserialiseFromBytes decodeBlock . BL.fromStrict)) . decodePackfile
-
-data NetworkLayerError
-    = DeserialiseError String
-    deriving (Show, Eq)
-
-instance Exception NetworkLayerError
 
 _getEpoch :: NetworkName -> Manager -> Word64 -> IO [Block]
 _getEpoch network manager n = do

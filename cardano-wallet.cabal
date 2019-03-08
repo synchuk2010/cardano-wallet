@@ -52,7 +52,8 @@ library
     , Cardano.Wallet.Binary.Packfile
     , Cardano.Wallet.ChainProducer
     , Cardano.Wallet.ChainProducer.RustCardano
-    , Cardano.Wallet.ChainProducer.TempNetwork
+    , Cardano.Wallet.ChainProducer.RustCardano.NetworkLayer
+    , Cardano.Wallet.ChainProducer.RustCardano.TempNetwork
     , Cardano.Wallet.Primitive
     , Cardano.Wallet.Slotting
   other-modules:
