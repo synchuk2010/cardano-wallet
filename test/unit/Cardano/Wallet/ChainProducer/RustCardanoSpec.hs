@@ -31,7 +31,7 @@ spec = do
 
     {-
     describe "Getting next blocks with a real backend" $ do
-        network <- liftIO newNetworkLayer "mainnet"
+        network <- liftIO $ newNetworkLayer "mainnet"
         getNextBlocksSpec network
     -}
 
