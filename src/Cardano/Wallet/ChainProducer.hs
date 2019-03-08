@@ -1,6 +1,5 @@
 module Cardano.Wallet.ChainProducer
     ( MonadChainProducer (..)
-    , nextBlocks
     , ErrGetNextBlocks (..)
     ) where
 

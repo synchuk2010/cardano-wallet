@@ -15,29 +15,15 @@ import Data.ByteArray.Encoding
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as BL
 import Network.HTTP.Client
-    ( Manager
-    , defaultRequest
-    , httpLbs
-    , method
-    , path
-    , port
-    , requestBody
-    , responseBody
-    , responseStatus
-    )
+    ( Manager, defaultRequest, httpLbs, path, port, responseBody )
 import qualified Network.HTTP.Client as HTTP
 
 import qualified Codec.CBOR.Decoding as CBOR
-import qualified Codec.CBOR.Encoding as CBOR
 import qualified Codec.CBOR.Read as CBOR
-import qualified Codec.CBOR.Write as CBOR
 import Control.Exception
-    ( Exception (..), throwIO )
-import Control.Monad
-    ( void )
+    ( throwIO )
 import Data.ByteString
     ( ByteString )
-import qualified Data.ByteString as BS
 import qualified Data.Text.Encoding as T
 import Data.Word
     ( Word16, Word64 )

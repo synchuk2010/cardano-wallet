@@ -5,9 +5,8 @@ import Prelude
 import Control.Exception
     ( Exception, throwIO )
 import Control.Monad.Except
-import Control.Monad.IO.Class
 import Test.Hspec
-    ( Spec, SpecWith (..), before, describe, it, shouldBe )
+    ( Spec, SpecWith, describe, it, shouldBe )
 
 import Cardano.Wallet.ChainProducer
     ( nextBlocks )
@@ -15,10 +14,8 @@ import Cardano.Wallet.ChainProducer.MockNetworkLayer
 import Cardano.Wallet.ChainProducer.RustCardano
 import Cardano.Wallet.ChainProducer.RustCardano.NetworkLayer
     ( NetworkLayer )
-import Cardano.Wallet.ChainProducer.RustCardano.TempNetwork
-    ( newNetworkLayer )
 import Cardano.Wallet.Slotting
-    ( EpochIndex, SlotId (..), slotPrev, slotsPerEpoch )
+    ( SlotId (..) )
 
 unsafeRunExceptT :: (Exception e, MonadIO m) => ExceptT e m a -> m a
 unsafeRunExceptT = either (liftIO . throwIO) pure <=< runExceptT

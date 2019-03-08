@@ -17,8 +17,6 @@ import Prelude
 import Cardano.Wallet.ChainProducer
 import Cardano.Wallet.ChainProducer.RustCardano.NetworkLayer
     ( NetworkLayer (..), NetworkLayerError )
-import Cardano.Wallet.ChainProducer.RustCardano.TempNetwork
-    ( newNetworkLayer )
 import Cardano.Wallet.Primitive
     ( Block (..), BlockHeader (..) )
 import Cardano.Wallet.Slotting
@@ -74,7 +72,7 @@ rbNextBlocks
     :: SlotCount -- ^ Number of blocks to retrieve
     -> SlotId    -- ^ Starting point
     -> ExceptT ErrGetNextBlocks RustBackend [Block]
-rbNextBlocks numBlocks start = ExceptT $ fmap Right $ do -- fixme: use ExceptT in network layer
+rbNextBlocks numBlocks start = handleBackendErrors $ do
     network <- getNetwork
     tip <- liftIO $ getNetworkTip network
 
@@ -133,3 +131,8 @@ fetchBlocksFromTip network start tip = reverse <$> workBackwards tip
                     blocks <- workBackwards (header block)
                     pure (block:blocks)
                 else pure []
+
+-- This is just a placeholder function. The network layer functions should
+-- probably use ExceptT.
+handleBackendErrors :: RustBackend a -> ExceptT ErrGetNextBlocks RustBackend a
+handleBackendErrors = ExceptT . fmap Right
