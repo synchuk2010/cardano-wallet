@@ -53,6 +53,7 @@ library
     , Cardano.Wallet.Node.Types
     , Cardano.Wallet.Node.RustCardano
     , Cardano.Wallet.Primitive
+    , Cardano.Wallet.Slotting
   other-modules:
       Paths_cardano_wallet
 
