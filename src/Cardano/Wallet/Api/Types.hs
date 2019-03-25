@@ -4,6 +4,9 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Cardano.Wallet.Api.Types
     (
@@ -34,6 +37,8 @@ import Prelude
 
 import Cardano.Wallet.Primitive.AddressDiscovery
     ( AddressPoolGap, getAddressPoolGap, mkAddressPoolGap )
+import Cardano.Wallet.Primitive.Mnemonic
+    ( EntropySize, Mnemonic, MnemonicWords, mkMnemonic, mnemonicToText )
 import Cardano.Wallet.Primitive.Model
     ( PoolId (..)
     , WalletDelegation (..)
@@ -43,6 +48,8 @@ import Cardano.Wallet.Primitive.Model
     , WalletState (..)
     , mkWalletName
     )
+import Crypto.Encoding.BIP39
+    ( ValidChecksumSize, ValidEntropySize, ValidMnemonicSentence )
 import Data.Aeson
     ( FromJSON (..)
     , SumEncoding (..)
@@ -88,8 +95,10 @@ data WalletBalance = WalletBalance
     , _total :: !(Quantity "lovelace" Natural)
     } deriving (Eq, Generic, Show)
 
+-- TODO: Generalize mnemonicSentence to accept a range of lengths.
 data WalletPostData = WalletPostData
     { _name :: !(ApiT WalletName)
+    , _mnemonicSentence :: !(ApiT (Mnemonic 12))
     , _passphrase :: !WalletPassphrase
     , _addressPoolGap :: !(Maybe (ApiT AddressPoolGap))
     } deriving (Eq, Generic, Show)
@@ -119,6 +128,17 @@ instance FromJSON WalletPassphrase where
     parseJSON x = eitherToParser . mkWalletPassphrase =<< parseJSON x
 instance ToJSON WalletPassphrase where
     toJSON = toJSON . getWalletPassphrase
+
+instance
+    ( n ~ EntropySize mw
+    , mw ~ MnemonicWords n
+    , ValidChecksumSize n csz
+    , ValidEntropySize n
+    , ValidMnemonicSentence mw
+    ) => FromJSON (ApiT (Mnemonic mw)) where
+    parseJSON x = fmap ApiT . eitherToParser . mkMnemonic @mw =<< parseJSON x
+instance ToJSON (ApiT (Mnemonic mw)) where
+    toJSON = toJSON . mnemonicToText . getApiT
 
 instance FromJSON WalletPostData where
     parseJSON = genericParseJSON defaultRecordTypeOptions

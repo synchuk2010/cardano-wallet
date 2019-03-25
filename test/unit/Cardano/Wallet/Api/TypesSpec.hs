@@ -27,14 +27,18 @@ import Cardano.Wallet.Api.Types
     , WalletId (..)
     , WalletName (..)
     , WalletPassphrase (..)
-    , walletPassphraseMinLength
-    , walletPassphraseMaxLength
-    , getWalletPassphrase
-    , mkWalletPassphrase
     , WalletPassphraseInfo (..)
     , WalletPostData (..)
     , WalletState (..)
+    , getWalletPassphrase
+    , mkWalletPassphrase
+    , walletPassphraseMaxLength
+    , walletPassphraseMinLength
     )
+import Cardano.Wallet.Primitive.Mnemonic
+    ( Mnemonic )
+import Cardano.Wallet.Primitive.MnemonicSpec
+    ()
 import Cardano.Wallet.Primitive.Model
     ( mkWalletName, walletNameMaxLength, walletNameMinLength )
 import Control.Lens
@@ -109,6 +113,7 @@ spec = do
             roundtripAndGolden $ Proxy @ WalletPassphrase
             roundtripAndGolden $ Proxy @ WalletPostData
             roundtripAndGolden $ Proxy @ (ApiT AddressPoolGap)
+            roundtripAndGolden $ Proxy @ (ApiT (Mnemonic 12))
             roundtripAndGolden $ Proxy @ (ApiT (WalletDelegation (ApiT PoolId)))
             roundtripAndGolden $ Proxy @ (ApiT WalletId)
             roundtripAndGolden $ Proxy @ (ApiT WalletName)
