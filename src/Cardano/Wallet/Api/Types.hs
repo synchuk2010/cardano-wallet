@@ -96,11 +96,13 @@ data WalletBalance = WalletBalance
     } deriving (Eq, Generic, Show)
 
 -- TODO: Generalize mnemonicSentence to accept a range of lengths.
+-- TODO: Deal with the incorrect encoding of the mnemonic2ndFactor field name.
 data WalletPostData = WalletPostData
-    { _name :: !(ApiT WalletName)
-    , _mnemonicSentence :: !(ApiT (Mnemonic 12))
+    { _addressPoolGap :: !(Maybe (ApiT AddressPoolGap))
+    , _mnemonicSentence :: !(ApiT (Mnemonic 24))
+    , _mnemonic2ndFactor :: !(Maybe (ApiT (Mnemonic 12)))
+    , _name :: !(ApiT WalletName)
     , _passphrase :: !WalletPassphrase
-    , _addressPoolGap :: !(Maybe (ApiT AddressPoolGap))
     } deriving (Eq, Generic, Show)
 
 newtype WalletPassphrase = WalletPassphrase
