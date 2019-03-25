@@ -10,6 +10,12 @@ module Cardano.Wallet.Api.Types
     -- * API Types
       Wallet (..)
     , WalletBalance (..)
+    , WalletPassphrase
+    , walletPassphraseMinLength
+    , walletPassphraseMaxLength
+    , getWalletPassphrase
+    , mkWalletPassphrase
+    , WalletPostData (..)
 
     -- * Re-Export From Primitives
     , PoolId (..)
@@ -52,6 +58,8 @@ import Data.Aeson
     )
 import Data.Quantity
     ( Quantity (..) )
+import Data.Text
+    ( Text )
 import GHC.Generics
     ( Generic )
 import Numeric.Natural
@@ -59,7 +67,7 @@ import Numeric.Natural
 
 import qualified Data.Aeson as Aeson
 import qualified Data.Aeson.Types as Aeson
-
+import qualified Data.Text as T
 
 {-------------------------------------------------------------------------------
                                   API Types
@@ -79,6 +87,43 @@ data WalletBalance = WalletBalance
     { _available :: !(Quantity "lovelace" Natural)
     , _total :: !(Quantity "lovelace" Natural)
     } deriving (Eq, Generic, Show)
+
+data WalletPostData = WalletPostData
+    { _name :: !(ApiT WalletName)
+    , _passphrase :: !WalletPassphrase
+    , _addressPoolGap :: !(Maybe (ApiT AddressPoolGap))
+    } deriving (Eq, Generic, Show)
+
+newtype WalletPassphrase = WalletPassphrase
+    { getWalletPassphrase :: Text }
+    deriving (Eq, Generic, Show)
+
+data MkWalletPassphraseError
+    = WalletPassphraseTooShort
+    | WalletPassphraseTooLong
+    deriving (Eq, Generic, Show)
+
+walletPassphraseMinLength :: Int
+walletPassphraseMinLength = 1
+
+walletPassphraseMaxLength :: Int
+walletPassphraseMaxLength = 255
+
+mkWalletPassphrase :: Text -> Either MkWalletPassphraseError WalletPassphrase
+mkWalletPassphrase p
+    | T.length p < walletPassphraseMinLength = Left WalletPassphraseTooShort
+    | T.length p > walletPassphraseMaxLength = Left WalletPassphraseTooLong
+    | otherwise = pure $ WalletPassphrase p
+
+instance FromJSON WalletPassphrase where
+    parseJSON x = eitherToParser . mkWalletPassphrase =<< parseJSON x
+instance ToJSON WalletPassphrase where
+    toJSON = toJSON . getWalletPassphrase
+
+instance FromJSON WalletPostData where
+    parseJSON = genericParseJSON defaultRecordTypeOptions
+instance ToJSON WalletPostData where
+    toJSON = genericToJSON defaultRecordTypeOptions
 
 instance FromJSON Wallet where
     parseJSON = genericParseJSON defaultRecordTypeOptions

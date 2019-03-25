@@ -26,7 +26,13 @@ import Cardano.Wallet.Api.Types
     , WalletDelegation (..)
     , WalletId (..)
     , WalletName (..)
+    , WalletPassphrase (..)
+    , walletPassphraseMinLength
+    , walletPassphraseMaxLength
+    , getWalletPassphrase
+    , mkWalletPassphrase
     , WalletPassphraseInfo (..)
+    , WalletPostData (..)
     , WalletState (..)
     )
 import Cardano.Wallet.Primitive.Model
@@ -100,6 +106,8 @@ spec = do
         "can perform roundtrip JSON serialization & deserialization, \
         \and match existing golden files" $ do
             roundtripAndGolden $ Proxy @ Wallet
+            roundtripAndGolden $ Proxy @ WalletPassphrase
+            roundtripAndGolden $ Proxy @ WalletPostData
             roundtripAndGolden $ Proxy @ (ApiT AddressPoolGap)
             roundtripAndGolden $ Proxy @ (ApiT (WalletDelegation (ApiT PoolId)))
             roundtripAndGolden $ Proxy @ (ApiT WalletId)
@@ -165,6 +173,10 @@ instance Arbitrary Wallet where
 instance Arbitrary AddressPoolGap where
     arbitrary = arbitraryBoundedEnum
 
+instance Arbitrary WalletPostData where
+    arbitrary = genericArbitrary
+    shrink = genericShrink
+
 instance Arbitrary WalletBalance where
     arbitrary = genericArbitrary
     shrink = genericShrink
@@ -194,6 +206,20 @@ instance Arbitrary WalletName where
             . shrink
             . T.unpack
             . getWalletName
+
+instance Arbitrary WalletPassphrase where
+    arbitrary = do
+        passphraseLength <-
+            choose (walletPassphraseMinLength, walletPassphraseMaxLength)
+        either (error "unable to create arbitrary WalletPassphrase") id
+            . mkWalletPassphrase
+            . T.pack <$> replicateM passphraseLength arbitraryPrintableChar
+    shrink =
+        rights
+            . fmap (mkWalletPassphrase . T.pack)
+            . shrink
+            . T.unpack
+            . getWalletPassphrase
 
 instance Arbitrary WalletPassphraseInfo where
     arbitrary = genericArbitrary

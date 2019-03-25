@@ -4,11 +4,11 @@
 module Cardano.Wallet.Api where
 
 import Cardano.Wallet.Api.Types
-    ( Wallet, WalletId )
+    ( Wallet, WalletId, WalletPostData )
 import Data.Proxy
     ( Proxy (..) )
 import Servant.API
-    ( (:<|>), (:>), Capture, Delete, Get, JSON, NoContent )
+    ( (:<|>), (:>), Capture, Delete, Get, JSON, NoContent, Post )
 
 api :: Proxy Api
 api = Proxy
@@ -25,3 +25,6 @@ type GetWallet = "wallets"
 
 type ListWallets = "wallets"
     :> Get '[JSON] [Wallet]
+
+type PostWallet = "wallets"
+    :> Post '[JSON] WalletPostData
