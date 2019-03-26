@@ -2,10 +2,13 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Cardano.Wallet.Api.Types
@@ -38,7 +41,7 @@ import Prelude
 import Cardano.Wallet.Primitive.AddressDiscovery
     ( AddressPoolGap, getAddressPoolGap, mkAddressPoolGap )
 import Cardano.Wallet.Primitive.Mnemonic
-    ( EntropySize, Mnemonic, MnemonicWords, mkMnemonic, mnemonicToText )
+    ( EntropySize, Mnemonic, MnemonicError, MnemonicWords, mkMnemonic, mnemonicToText )
 import Cardano.Wallet.Primitive.Model
     ( PoolId (..)
     , WalletDelegation (..)
@@ -72,6 +75,11 @@ import GHC.Generics
 import Numeric.Natural
     ( Natural )
 
+import Data.Proxy
+import GHC.TypeLits
+import GHC.TypeLits.Compare
+import Data.Type.Equality
+
 import qualified Data.Aeson as Aeson
 import qualified Data.Aeson.Types as Aeson
 import qualified Data.Text as T
@@ -98,8 +106,8 @@ data WalletBalance = WalletBalance
 -- TODO: Generalize mnemonicSentence to accept a range of lengths.
 data WalletPostData = WalletPostData
     { _addressPoolGap :: !(Maybe (ApiT AddressPoolGap))
-    , _mnemonicSentence :: !(ApiT (Mnemonic 24))
-    , _mnemonicSecondFactor :: !(Maybe (ApiT (Mnemonic 12)))
+    , _mnemonicSentence :: !(ApiT (BoundedLengthMnemonic 15 24))
+    , _mnemonicSecondFactor :: !(Maybe (ApiT (BoundedLengthMnemonic 9 12)))
     , _name :: !(ApiT WalletName)
     , _passphrase :: !WalletPassphrase
     } deriving (Eq, Generic, Show)
@@ -140,6 +148,44 @@ instance
     parseJSON x = fmap ApiT . eitherToParser . mkMnemonic @mw =<< parseJSON x
 instance ToJSON (ApiT (Mnemonic mw)) where
     toJSON = toJSON . mnemonicToText . getApiT
+
+data BoundedLengthMnemonic (minLen :: Nat) (maxLen :: Nat) =
+    forall mw . ( minLen <= mw, mw <= maxLen) => BoundedLengthMnemonic
+    { getMnemonic :: Mnemonic mw }
+
+instance (KnownNat minLen, KnownNat maxLen) =>
+        FromJSON (ApiT (BoundedLengthMnemonic minLen maxLen)) where
+    parseJSON x =
+        fmap ApiT . eitherToParser . mkBoundedLengthMnemonic @minLen @maxLen
+            =<< parseJSON x
+instance ToJSON (ApiT (BoundedLengthMnemonic minLen maxLen)) where
+    toJSON x = case getApiT x of
+        (BoundedLengthMnemonic y) -> toJSON $ mnemonicToText y
+
+instance Eq (BoundedLengthMnemonic minLen maxLen)
+  where
+    (BoundedLengthMnemonic a) == (BoundedLengthMnemonic b) =
+        mnemonicToText a == mnemonicToText b
+
+deriving instance Show (BoundedLengthMnemonic minLen maxLen)
+
+data MkBoundedLengthMnemonicError
+    = MnemonicTooShort
+    | MnemonicTooLong
+    deriving Show
+
+mkBoundedLengthMnemonic
+    :: forall minLen maxLen . (KnownNat minLen, KnownNat maxLen)
+    => [Text]
+    -> Either MkBoundedLengthMnemonicError (BoundedLengthMnemonic minLen maxLen)
+mkBoundedLengthMnemonic mw
+    | len < minLen = Left MnemonicTooShort
+    | len > maxLen = Left MnemonicTooLong
+    | otherwise = undefined
+  where
+    len = length mw
+    minLen = fromIntegral $ natVal @minLen Proxy
+    maxLen = fromIntegral $ natVal @maxLen Proxy
 
 instance FromJSON WalletPostData where
     parseJSON = genericParseJSON defaultRecordTypeOptions

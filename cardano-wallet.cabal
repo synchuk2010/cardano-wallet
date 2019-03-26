@@ -58,6 +58,7 @@ library
     , time
     , time-units
     , transformers
+    , typelits-witnesses
     , uuid-types
   hs-source-dirs:
       src
