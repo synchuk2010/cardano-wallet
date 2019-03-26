@@ -8,12 +8,16 @@ import Cardano.Wallet.Api.Types
 import Data.Proxy
     ( Proxy (..) )
 import Servant.API
-    ( (:<|>), (:>), Capture, Delete, Get, JSON, NoContent, Post )
+    ( (:<|>), (:>), Capture, Delete, Get, JSON, NoContent, Post, ReqBody )
 
 api :: Proxy Api
 api = Proxy
 
-type Api = DeleteWallet :<|> GetWallet :<|> ListWallets
+type Api =
+    DeleteWallet
+    :<|> GetWallet
+    :<|> ListWallets
+    :<|> PostWallet
 
 type DeleteWallet = "wallets"
     :> Capture "walletId" WalletId
@@ -27,4 +31,5 @@ type ListWallets = "wallets"
     :> Get '[JSON] [Wallet]
 
 type PostWallet = "wallets"
-    :> Post '[JSON] WalletPostData
+    :> ReqBody '[JSON] WalletPostData
+    :> Post '[JSON] Wallet

@@ -78,7 +78,7 @@ import GHC.TypeLits
 import Numeric.Natural
     ( Natural )
 import Servant
-    ( (:<|>), (:>), Capture, StdMethod (..), Verb )
+    ( (:<|>), (:>), Capture, ReqBody, StdMethod (..), Verb )
 import Servant.Swagger.Test
     ( validateEveryToJSON )
 import Test.Aeson.GenericSpecs
@@ -285,7 +285,7 @@ specification =
     unsafeDecode = either ( error . (msg <>) . show) id . Yaml.decodeEither'
     msg = "Whoops! Failed to parse or find the api specification document: "
 
--- | Ad-hoc 'ToSchema' instance for the 'Wallet' definition, we simply look it
+-- | Ad-hoc 'ToSchema' instance for the 'Wallet' definition: we simply look it
 -- up from the specification.
 instance ToSchema Wallet where
     declareNamedSchema _ = case specification ^. definitions . at "Wallet" of
@@ -293,6 +293,17 @@ instance ToSchema Wallet where
             error "unable to find the definition for 'Wallet' in the spec"
         Just schema ->
             return $ NamedSchema (Just "Wallet") schema
+
+-- | Ad-hoc 'ToSchema' instance for the 'WalletPostData' definition: we simply
+-- look it up from the specification.
+instance ToSchema WalletPostData where
+    declareNamedSchema _ =
+        case specification ^. definitions . at "WalletPostData" of
+            Nothing -> error
+                "unable to find the definition for 'WalletPostData' in \
+                \the spec"
+            Just schema ->
+                return $ NamedSchema (Just "WalletPostData") schema
 
 -- | Verify that all servant endpoints are present and match the specification
 class ValidateEveryPath api where
@@ -328,6 +339,9 @@ instance (KnownSymbol param, HasPath sub) => HasPath (Capture param t :> sub)
     getPath _ =
         let (verb, sub) = getPath (Proxy @sub)
         in (verb, "/{" <> symbolVal (Proxy :: Proxy param) <> "}" <> sub)
+
+instance HasPath sub => HasPath (ReqBody a b :> sub) where
+    getPath _ = getPath (Proxy @sub)
 
 -- A way to demote 'StdMethod' back to the world of values. Servant provides a
 -- 'reflectMethod' that does just that, but demote types to raw 'ByteString' for
