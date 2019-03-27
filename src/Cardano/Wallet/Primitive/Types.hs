@@ -33,6 +33,7 @@ module Cardano.Wallet.Primitive.Types
     , TxMeta(..)
     , txIns
     , updatePending
+    , SignedTx (..)
 
     -- * Address
     , Address (..)
@@ -430,3 +431,7 @@ invariant
     -> a
 invariant msg a predicate =
     if predicate a then a else error msg
+
+
+
+newtype SignedTx = SignedTx String -- base64-encoded data of signed tx

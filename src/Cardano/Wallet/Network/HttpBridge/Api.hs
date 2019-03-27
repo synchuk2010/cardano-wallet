@@ -13,7 +13,6 @@ module Cardano.Wallet.Network.HttpBridge.Api
     , ApiT(..)
     , EpochIndex (..)
     , NetworkName (..)
-    , SignedTx (..)
     ) where
 
 import Prelude
@@ -21,7 +20,7 @@ import Prelude
 import Cardano.Wallet.Binary
     ( decodeBlock, decodeBlockHeader )
 import Cardano.Wallet.Primitive.Types
-    ( Block, BlockHeader )
+    ( Block, BlockHeader, SignedTx )
 import Crypto.Hash.Algorithms
     ( Blake2b_256 )
 import Data.Proxy
@@ -73,8 +72,6 @@ type GetTipBlockHeader
     :> "tip"
     :> Get '[ComputeHash Blake2b_256 CBOR]
             (WithHash Blake2b_256 (ApiT BlockHeader))
-
-newtype SignedTx = SignedTx String -- base64-encoded data of signed tx
 
 type PostSignedTx
     =  Capture "networkName" NetworkName

@@ -17,6 +17,7 @@ module Cardano.Wallet.Network.HttpBridge
     , HttpBridgeError(..)
     , mkNetworkLayer
     , newNetworkLayer
+    , mkHttpBridge
     ) where
 
 import Prelude
@@ -24,11 +25,12 @@ import Prelude
 import Cardano.Wallet.Network
     ( NetworkLayer (..) )
 import Cardano.Wallet.Network.HttpBridge.Api
-    ( ApiT (..), EpochIndex (..), NetworkName (..), SignedTx, api )
+    ( ApiT (..), EpochIndex (..), NetworkName (..), api )
 import Cardano.Wallet.Primitive.Types
     ( Block (..)
     , BlockHeader (..)
     , Hash (..)
+    , SignedTx (..)
     , SlotId (..)
     , invariant
     , isValidSlotId
@@ -38,7 +40,7 @@ import Control.Exception
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
-    ( ExceptT (..), runExceptT, throwE )
+    ( ExceptT (..), mapExceptT, runExceptT, throwE )
 import Crypto.Hash
     ( HashAlgorithm, digestFromByteString )
 import Data.Bifunctor
@@ -68,6 +70,7 @@ mkNetworkLayer :: Monad m => HttpBridge m e -> NetworkLayer m e e
 mkNetworkLayer httpBridge = NetworkLayer
     { nextBlocks = rbNextBlocks httpBridge
     , networkTip = getNetworkTip httpBridge
+    , postTx = postSignedTx httpBridge
     }
 
 -- | Creates a cardano-http-bridge 'NetworkLayer' using the given connection
@@ -149,7 +152,7 @@ data HttpBridge m e = HttpBridge
     , getNetworkTip
         :: ExceptT e m (Hash "BlockHeader", BlockHeader)
     , postSignedTx
-        :: SignedTx -> ExceptT e m NoContent
+        :: SignedTx -> ExceptT e m ()
     }
 
 -- | Construct a new network layer
@@ -164,12 +167,17 @@ mkHttpBridge mgr baseUrl network = HttpBridge
     , getNetworkTip =
         run (blockHeaderHash <$> getTipBlockHeader network)
     , postSignedTx =
-        run . (_postSignedTx network)
+        toUnit . run . (_postSignedTx network)
     }
   where
     run :: ClientM a -> ExceptT HttpBridgeError IO a
     run query = ExceptT $ (first convertError) <$> runClientM query env
+
     env = mkClientEnv mgr baseUrl
+
+    toUnit :: Monad m => ExceptT e m NoContent -> ExceptT e m ()
+    toUnit = mapExceptT (>>= return . fmap (const ()))
+
     getBlockByHash
         :<|> getEpochById
         :<|> getTipBlockHeader
