@@ -35,6 +35,7 @@ library
       aeson
     , base
     , base58-bytestring
+    , base64-bytestring
     , basement
     , binary
     , bytestring

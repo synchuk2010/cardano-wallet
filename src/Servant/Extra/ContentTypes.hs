@@ -35,8 +35,11 @@ import Servant.API
     ( Accept (..), MimeRender (..), MimeUnrender (..), ToHttpApiData (..) )
 
 import qualified Codec.CBOR.Decoding as CBOR
+import qualified Codec.CBOR.Encoding as CBOR
 import qualified Codec.CBOR.Read as CBOR
+import qualified Data.ByteString.Base64.Lazy as B64
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy.Char8 as C8
 
 -- | Represents a CBOR (Concise Binary Object Representation) object.
 --
@@ -57,6 +60,13 @@ instance FromCBOR a => MimeUnrender CBOR a where
         (Left . show)
         (Right . snd)
         (CBOR.deserialiseFromBytes fromCBOR bl)
+
+
+class ToCBOR a where
+    toCBOR :: a -> CBOR.Encoding
+
+instance ToCBOR MimeRender CBOR b where
+    mimeRender _ _ = C8.pack "hi"
 
 -- | Represents a piece of binary data for which a hash value should be
 --   calculated before performing any further deserialization.
@@ -105,11 +115,9 @@ instance Accept (Base64 a) where
     contentType _ = "text" // "plain"
 
 instance forall a b . MimeUnrender a b => MimeUnrender (Base64 a) b where
-    mimeUnrender _ = mimeUnrender (Proxy :: Proxy a)
-
+    mimeUnrender _ bs =
+        B64.decode bs >>= mimeUnrender (Proxy :: Proxy a)
 
 instance forall a b . MimeRender a b => MimeRender (Base64 a) b where
-    mimeRender _ = mimeRender (Proxy :: Proxy a)
+    mimeRender _ = B64.encode . mimeRender (Proxy :: Proxy a)
 
-instance MimeRender CBOR b where
-    mimeRender _ = undefined
