@@ -37,9 +37,14 @@ import Servant.API
 import qualified Codec.CBOR.Decoding as CBOR
 import qualified Codec.CBOR.Encoding as CBOR
 import qualified Codec.CBOR.Read as CBOR
+import qualified Codec.CBOR.Write as CBOR
 import qualified Data.ByteString.Base64.Lazy as B64
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.Char8 as C8
+
+
+-- Temporary:
+import Cardano.Wallet.Primitive.Types
+    ( SignedTx (..) )
 
 -- | Represents a CBOR (Concise Binary Object Representation) object.
 --
@@ -65,8 +70,11 @@ instance FromCBOR a => MimeUnrender CBOR a where
 class ToCBOR a where
     toCBOR :: a -> CBOR.Encoding
 
-instance ToCBOR MimeRender CBOR b where
-    mimeRender _ _ = C8.pack "hi"
+instance ToCBOR b => MimeRender CBOR b where
+    mimeRender _ bs = CBOR.toLazyByteString $ toCBOR bs
+
+instance ToCBOR SignedTx where
+    toCBOR (SignedTx bs) = CBOR.encodeBytes bs
 
 -- | Represents a piece of binary data for which a hash value should be
 --   calculated before performing any further deserialization.

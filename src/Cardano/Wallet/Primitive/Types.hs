@@ -434,4 +434,4 @@ invariant msg a predicate =
 
 
 
-newtype SignedTx = SignedTx String -- base64-encoded data of signed tx
+newtype SignedTx = SignedTx ByteString -- base64-encoded data of signed tx
