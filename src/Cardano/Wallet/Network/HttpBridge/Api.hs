@@ -13,6 +13,7 @@ module Cardano.Wallet.Network.HttpBridge.Api
     , ApiT(..)
     , EpochIndex (..)
     , NetworkName (..)
+    , SignedTx (..)
     ) where
 
 import Prelude
@@ -30,9 +31,17 @@ import Data.Text
 import Data.Word
     ( Word64 )
 import Servant.API
-    ( (:<|>), (:>), Capture, Get, ToHttpApiData (..) )
+    ( (:<|>)
+    , (:>)
+    , Capture
+    , Get
+    , NoContent
+    , Post
+    , ReqBody
+    , ToHttpApiData (..)
+    )
 import Servant.Extra.ContentTypes
-    ( CBOR, ComputeHash, FromCBOR (..), Hash, Packed, WithHash )
+    ( Base64, CBOR, ComputeHash, FromCBOR (..), Hash, Packed, WithHash )
 
 
 api :: Proxy Api
@@ -42,6 +51,7 @@ type Api
     =    GetBlockByHash
     :<|> GetEpochById
     :<|> GetTipBlockHeader
+    :<|> PostSignedTx
 
 -- | Retrieve a block identified by the unique hash of its header.
 type GetBlockByHash
@@ -63,6 +73,15 @@ type GetTipBlockHeader
     :> "tip"
     :> Get '[ComputeHash Blake2b_256 CBOR]
             (WithHash Blake2b_256 (ApiT BlockHeader))
+
+newtype SignedTx = SignedTx String -- base64-encoded data of signed tx
+
+type PostSignedTx
+    =  Capture "networkName" NetworkName
+    :> "txs"
+    :> "signed"
+    :> ReqBody '[Base64 CBOR] SignedTx
+    :> Post '[NoContent] NoContent
 
 newtype ApiT a = ApiT { getApiT :: a } deriving (Show)
 

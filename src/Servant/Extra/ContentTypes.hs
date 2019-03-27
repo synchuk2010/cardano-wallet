@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -12,6 +13,7 @@ module Servant.Extra.ContentTypes
     , Hash (..)
     , Packed
     , WithHash (..)
+    , Base64
     ) where
 
 import Cardano.Wallet.Binary.Packfile
@@ -30,7 +32,7 @@ import Network.HTTP.Media
     ( (//) )
 import Prelude
 import Servant.API
-    ( Accept (..), MimeUnrender (..), ToHttpApiData (..) )
+    ( Accept (..), MimeRender (..), MimeUnrender (..), ToHttpApiData (..) )
 
 import qualified Codec.CBOR.Decoding as CBOR
 import qualified Codec.CBOR.Read as CBOR
@@ -95,3 +97,19 @@ instance forall a b . MimeUnrender a b => MimeUnrender (Packed a) [b] where
         (Left . show)
         (traverse $ mimeUnrender (Proxy :: Proxy a) . BL.fromStrict)
         (decodePackfile bs)
+
+
+data Base64 a
+
+instance Accept (Base64 a) where
+    contentType _ = "text" // "plain"
+
+instance forall a b . MimeUnrender a b => MimeUnrender (Base64 a) b where
+    mimeUnrender _ = mimeUnrender (Proxy :: Proxy a)
+
+
+instance forall a b . MimeRender a b => MimeRender (Base64 a) b where
+    mimeRender _ = mimeRender (Proxy :: Proxy a)
+
+instance MimeRender CBOR b where
+    mimeRender _ = undefined

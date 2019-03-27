@@ -24,7 +24,7 @@ import Prelude
 import Cardano.Wallet.Network
     ( NetworkLayer (..) )
 import Cardano.Wallet.Network.HttpBridge.Api
-    ( ApiT (..), EpochIndex (..), NetworkName (..), api )
+    ( ApiT (..), EpochIndex (..), NetworkName (..), SignedTx, api )
 import Cardano.Wallet.Primitive.Types
     ( Block (..)
     , BlockHeader (..)
@@ -52,7 +52,7 @@ import Data.Word
 import Network.HTTP.Client
     ( Manager, defaultManagerSettings, newManager )
 import Servant.API
-    ( (:<|>) (..) )
+    ( (:<|>) (..), NoContent )
 import Servant.Client
     ( BaseUrl (..), ClientM, Scheme (Http), client, mkClientEnv, runClientM )
 import Servant.Client.Core
@@ -148,6 +148,8 @@ data HttpBridge m e = HttpBridge
         :: Word64 -> ExceptT e m [Block]
     , getNetworkTip
         :: ExceptT e m (Hash "BlockHeader", BlockHeader)
+    , postSignedTx
+        :: SignedTx -> ExceptT e m NoContent
     }
 
 -- | Construct a new network layer
@@ -161,6 +163,8 @@ mkHttpBridge mgr baseUrl network = HttpBridge
         run (map getApiT <$> getEpochById network (EpochIndex ep))
     , getNetworkTip =
         run (blockHeaderHash <$> getTipBlockHeader network)
+    , postSignedTx =
+        run . (_postSignedTx network)
     }
   where
     run :: ClientM a -> ExceptT HttpBridgeError IO a
@@ -169,6 +173,7 @@ mkHttpBridge mgr baseUrl network = HttpBridge
     getBlockByHash
         :<|> getEpochById
         :<|> getTipBlockHeader
+        :<|> _postSignedTx
         = client api
 
 convertError :: ServantError -> HttpBridgeError
