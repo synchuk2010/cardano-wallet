@@ -9,12 +9,20 @@ import Prelude
 
 import Cardano.Launcher
     ( Command (..), launch )
+import Cardano.Wallet.Binary
+    ( encodeTx )
 import Cardano.Wallet.Network
     ( NetworkLayer (..) )
 import Cardano.Wallet.Network.HttpBridge
     ( HttpBridgeError (..) )
 import Cardano.Wallet.Primitive.Types
-    ( Block (..), BlockHeader (..), Hash (..), SlotId (..) )
+    ( Block (..)
+    , BlockHeader (..)
+    , Hash (..)
+    , SignedTx (..)
+    , SlotId (..)
+    , Tx (..)
+    )
 import Control.Concurrent
     ( threadDelay )
 import Control.Concurrent.Async
@@ -31,12 +39,15 @@ import Test.Hspec
     , beforeAll
     , describe
     , it
+    , shouldBe
     , shouldReturn
     , shouldSatisfy
     , shouldThrow
     )
 
 import qualified Cardano.Wallet.Network.HttpBridge as HttpBridge
+import qualified Codec.CBOR.Write as CBOR
+import qualified Data.ByteString.Lazy as BL
 
 port :: Int
 port = 1337
@@ -90,6 +101,14 @@ spec = do
                         Left (NodeUnavailable _) -> True
                         _ -> error (msg res)
             action `shouldReturn` ()
+
+
+    describe "posting signed txs" $ beforeAll startBridge $ afterAll closeBridge $ do
+        it "works for an empty tx" $ \(_, network) -> do
+            let tx = Tx [] []
+            let signed = SignedTx $ BL.toStrict $ CBOR.toLazyByteString $ encodeTx tx
+            res <- runExceptT $ postTx network signed
+            res `shouldBe` (Right ())
   where
     newNetworkLayer =
         HttpBridge.newNetworkLayer "testnet" port
