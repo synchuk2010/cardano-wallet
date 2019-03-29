@@ -13,18 +13,9 @@ import Cardano.Wallet.CoinSelection
 import Cardano.Wallet.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Wallet.Primitive.Types
-    ( Address (..)
-    , Coin (..)
-    , Hash (..)
-    , TxIn (..)
-    , TxOut (..)
-    , UTxO (..)
-    , invariant
-    )
+    ( Address (..), Coin (..), Hash (..), TxIn (..), TxOut (..), UTxO (..) )
 import Control.Arrow
     ( right )
-import Control.DeepSeq
-    ( deepseq )
 import Control.Monad.IO.Class
     ( liftIO )
 import Control.Monad.Trans.Except
@@ -48,6 +39,7 @@ import Test.QuickCheck
     , scale
     , suchThat
     , vectorOf
+    , (==>)
     )
 import Test.QuickCheck.Monadic
     ( monadicIO )
@@ -60,69 +52,106 @@ import qualified Data.Map.Strict as Map
 spec :: Spec
 spec = do
     describe "Coin selection : LargestFirst algorithm unit tests" $ do
-        it "happy path result in successful selection - a" $ do
+        it "happy path result in successful selection - one input per output - a" $ do
             (coinSelectionUnitTest
-                100
-                [10,10,17]
-                (17 :| [])
-                (Right [17])
-                )
-        it "happy path result in successful selection - b" $ do
+                (UnitTestInput
+                 100
+                 [10,10,17]
+                 (17 :| [])
+                 (Right [17])
+                ))
+        it "happy path result in successful selection - one input per output - b" $ do
             (coinSelectionUnitTest
-                100
-                [12,10,17]
-                (1 :| [])
-                (Right [10])
-                )
+                (UnitTestInput
+                 100
+                 [12,10,17]
+                 (1 :| [])
+                 (Right [17])
+                ))
+        it "happy path result in successful selection - two inputs per output" $ do
+            (coinSelectionUnitTest
+                (UnitTestInput
+                 100
+                 [12,10,17]
+                 (18 :| [])
+                 (Right [17, 12])
+                ))
+        it "happy path result in successful selection - three inputs per output" $ do
+            (coinSelectionUnitTest
+                (UnitTestInput
+                 100
+                 [12,10,17]
+                 (30 :| [])
+                 (Right [17, 12, 10])
+                ))
         it "NotEnoughMoney error expected when not enough coins" $ do
             (coinSelectionUnitTest
-                100
-                [12,10,17]
-                (40 :| [])
-                (Left $ NotEnoughMoney 39 40)
-                )
+                (UnitTestInput
+                 100
+                 [12,10,17]
+                 (40 :| [])
+                 (Left $ NotEnoughMoney 39 40)
+                ))
         it "NotEnoughMoney error expected when not enough coins and utxo not fragmented enough" $ do
             (coinSelectionUnitTest
-                100
-                [12,10,17]
-                (40 :| [1,1,1])
-                (Left $ NotEnoughMoney 39 43)
-                )
+                (UnitTestInput
+                 100
+                 [12,10,17]
+                 (40 :| [1,1,1])
+                 (Left $ NotEnoughMoney 39 43)
+                ))
         it "UtxoNotEnoughFragmented error expected when enough coins and utxo not fragmented enough" $ do
             (coinSelectionUnitTest
-                100
-                [12,20,17]
-                (40 :| [1,1,1])
-                (Left $ UtxoNotEnoughFragmented 3 4)
-                )
-        it "happy path with too strict maximumNumberOfInputs result in error" $ do
+                (UnitTestInput
+                 100
+                 [12,20,17]
+                 (40 :| [1,1,1])
+                 (Left $ UtxoNotEnoughFragmented 3 4)
+                ))
+        it "happy path with correct maximumNumberOfInputs - 3 inputs for 2 outputs" $ do
             (coinSelectionUnitTest
-                1
-                [10,10,17]
-                (17 :| [1])
-                (Left $ MaximumInputsReached 1)
-                )
+                (UnitTestInput
+                 3
+                 [1,2,10,6,5]
+                 (11 :| [1])
+                 (Right [10,6,5])
+                ))
+        it "happy path with too strict maximumNumberOfInputs result in error - 3 inputs for 2 outputs" $ do
+            (coinSelectionUnitTest
+                (UnitTestInput
+                 2
+                 [1,2,10,6,5]
+                 (11 :| [1])
+                 (Left $ MaximumInputsReached 2)
+                ))
+
     describe "Coin selection properties : LargestFirst algorithm" $ do
-        it "forall (UTxO, NonEmpty TxOut), running algorithm twice yields exactly the same result"
+        it "forall (UTxO, NonEmpty TxOut), \
+           \ running algorithm twice yields exactly the same result"
             (property propDeterministic)
-        it "forall (UTxO, NonEmpty TxOut), there's at least as many selected inputs as there are requested outputs"
+        it "forall (UTxO, NonEmpty TxOut), \
+           \ there's at least as many selected inputs as there are requested outputs"
             (property propAtLeast)
+        it "forall (UTxO, NonEmpty TxOut), for all selected input, \
+           \ there's no bigger input in the UTxO that is not already in the selected inputs."
+            (property propInputDecreasingOrder)
 
 {-------------------------------------------------------------------------------
                  Properties and unit test generic scenario
 -------------------------------------------------------------------------------}
 
+data UnitTestInput = UnitTestInput
+    { maxNumOfInputs :: Word64
+    , utxoInputs :: [Word64]
+    , txOutputs :: NonEmpty Word64
+    , expectedResult :: Either CoinSelectionError [Word64]
+    } deriving Show
+
+
 coinSelectionUnitTest
-    :: Word64
-    -- ^ maximumNumberOfInputs
-    -> [Word64]
-    -- ^ utxo coins
-    -> NonEmpty Word64
-    -- ^ transaction outputs
-    -> Either CoinSelectionError [Word64]
-    -- ^ expecting CoinSelectionError or coins selected
+    :: UnitTestInput
     -> Expectation
-coinSelectionUnitTest n utxoCoins txOutsCoins expected = do
+coinSelectionUnitTest (UnitTestInput n utxoCoins txOutsCoins expected) = do
     (utxo,txOuts) <- setup
 
     result <- runExceptT $ largestFirst
@@ -155,40 +184,53 @@ propDeterministic
     :: CoveringCase
     -> Property
 propDeterministic (CoveringCase (utxo, txOuts)) =
-    monadicIO $ liftIO $ do
-        let check =
-                invariant "utxo must cover all transaction outputs"
-                (NE.length txOuts)
-                (\_ -> condCoinsCovering txOuts utxo)
-        resultOne <- check `deepseq`
-                     runExceptT $ largestFirst
-                     (defaultCoinSelectionOptions 100)
-                     utxo
-                     txOuts
-        resultTwo <- runExceptT $ largestFirst
-                     (defaultCoinSelectionOptions 100)
-                     utxo
-                     txOuts
-        resultOne `shouldBe` resultTwo
+    (condCoinsCovering txOuts utxo) ==> monadicIO $ liftIO $ do
+    resultOne <- runExceptT $ largestFirst
+                 (defaultCoinSelectionOptions 100)
+                 utxo
+                 txOuts
+    resultTwo <- runExceptT $ largestFirst
+                 (defaultCoinSelectionOptions 100)
+                 utxo
+                 txOuts
+
+    resultOne `shouldBe` resultTwo
 
 propAtLeast
     :: CoveringCase
     -> Property
 propAtLeast (CoveringCase (utxo, txOuts)) =
-    monadicIO $ liftIO $ do
-        let check =
-                invariant "utxo must cover all transaction outputs"
-                (NE.length txOuts)
-                (\_ -> condCoinsCovering txOuts utxo)
-        result <- check `deepseq`
-                  runExceptT $ largestFirst
-                  (defaultCoinSelectionOptions 100)
-                  utxo
-                  txOuts
-        L.length
-            (concatMap (\ (CoinSelection inps _ _) -> inps) $ rights [result])
-            `shouldSatisfy`
-            (>= NE.length txOuts)
+    (condCoinsCovering txOuts utxo) ==> monadicIO $ liftIO $ do
+    result <- runExceptT $ largestFirst
+              (defaultCoinSelectionOptions 100)
+              utxo
+              txOuts
+
+    L.length
+        (concatMap (\ (CoinSelection inps _ _) -> inps) $ rights [result])
+        `shouldSatisfy`
+        (>= NE.length txOuts)
+
+propInputDecreasingOrder
+    :: CoveringCase
+    -> Property
+propInputDecreasingOrder (CoveringCase (utxo, txOuts)) =
+    (condCoinsCovering txOuts utxo) ==> monadicIO $ liftIO $ do
+    result <- runExceptT $ largestFirst
+              (defaultCoinSelectionOptions 100)
+              utxo
+              txOuts
+    let utxoEntriesInCoinSelection =
+            concatMap (\ (CoinSelection inps _ _) -> inps)
+            $ rights [result]
+    let utxo' =
+            Map.toList (getUTxO utxo) L.\\ utxoEntriesInCoinSelection
+    let getExtremumValue f = f . map (getCoin . coin . snd)
+
+    if L.null utxo' then utxo' `shouldBe` utxo' else
+        (getExtremumValue L.minimum utxoEntriesInCoinSelection)
+        `shouldSatisfy` (>= (getExtremumValue L.maximum utxo'))
+
 {-------------------------------------------------------------------------------
                                   Test Data
 -------------------------------------------------------------------------------}
