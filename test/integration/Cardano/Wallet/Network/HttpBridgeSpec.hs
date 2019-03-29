@@ -10,7 +10,7 @@ import Prelude
 import Cardano.Launcher
     ( Command (..), launch )
 import Cardano.Wallet.Binary
-    ( encodeTx )
+    ( encodeSignedTx )
 import Cardano.Wallet.Network
     ( NetworkLayer (..) )
 import Cardano.Wallet.Network.HttpBridge
@@ -106,7 +106,7 @@ spec = do
     describe "posting signed txs" $ beforeAll startBridge $ afterAll closeBridge $ do
         it "works for an empty tx" $ \(_, network) -> do
             let tx = Tx [] []
-            let signed = SignedTx $ BL.toStrict $ CBOR.toLazyByteString $ encodeTx tx
+            let signed = SignedTx $ BL.toStrict $ CBOR.toLazyByteString $ encodeSignedTx tx
             res <- runExceptT $ postTx network signed
             res `shouldBe` (Right ())
   where
