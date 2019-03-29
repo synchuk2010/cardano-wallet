@@ -273,7 +273,7 @@ instance Buildable TxIn where
 data TxOut = TxOut
     { address
         :: !Address
-    , coin
+    , amount
         :: !Coin
     } deriving (Show, Generic, Eq, Ord)
 
@@ -281,7 +281,7 @@ instance NFData TxOut
 
 instance Buildable TxOut where
     build txout = mempty
-        <> build (coin txout)
+        <> build (amount txout)
         <> " @ "
         <> prefixF 8 addrF
         <> "..."
@@ -399,7 +399,7 @@ balance =
     Map.foldl' fn 0 . getUTxO
   where
     fn :: Natural -> TxOut -> Natural
-    fn tot out = tot + fromIntegral (getCoin (coin out))
+    fn tot out = tot + fromIntegral (getCoin (amount out))
 
 -- ins⋪ u
 excluding :: UTxO -> Set TxIn ->  UTxO

@@ -67,7 +67,9 @@ import Cardano.Wallet.Primitive.Mnemonic
 import Cardano.Wallet.Primitive.Types
     ( Address (..)
     , AddressState (..)
+    , Coin (..)
     , PoolId (..)
+    , TxOut
     , WalletBalance (..)
     , WalletDelegation (..)
     , WalletId (..)
@@ -97,12 +99,12 @@ import Data.Quantity
     ( Quantity (..) )
 import Data.Text
     ( Text )
+import Data.Word
+    ( Word64 )
 import GHC.Generics
     ( Generic )
 import GHC.TypeLits
     ( Nat, Symbol )
-import Numeric.Natural
-    ( Natural )
 
 import qualified Data.Aeson as Aeson
 import qualified Data.Aeson.Types as Aeson
@@ -147,13 +149,8 @@ data WalletPutPassphraseData = WalletPutPassphraseData
     } deriving (Eq, Generic, Show)
 
 data CreateTransactionData = CreateTransactionData
-    { _targets :: ![TargetOutput]
+    { _targets :: ![TxOut]
     , _passphrase :: !(ApiT (Passphrase "encryption"))
-    } deriving (Generic, Show)
-
-data TargetOutput = TargetOutput
-    { _address :: !(ApiT Address)
-    , _amount :: !(Quantity "lovelace" Natural)
     } deriving (Generic, Show)
 
 data Transaction
@@ -378,10 +375,11 @@ walletStateOptions = taggedSumTypeOptions $ TaggedObjectOptions
     , _contentsFieldName = "progress"
     }
 
-instance FromJSON TargetOutput where
-    parseJSON = genericParseJSON defaultRecordTypeOptions
-instance ToJSON TargetOutput where
-    toJSON = genericToJSON defaultRecordTypeOptions
+instance FromJSON (ApiT Coin) where
+    parseJSON = parseJSON @(Quantity "lovelace" Word64) >=>
+        \(Quantity c) -> return . ApiT $ Coin c
+instance ToJSON (ApiT Coin) where
+    toJSON (ApiT (Coin c)) = toJSON @(Quantity "lovelace" Word64) $ Quantity c
 
 {-------------------------------------------------------------------------------
                                 Aeson Options

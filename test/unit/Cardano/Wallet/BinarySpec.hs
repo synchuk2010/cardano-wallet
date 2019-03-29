@@ -142,8 +142,8 @@ block2 = Block
             { inputs =
                 [ TxIn { inputId = inputId0, inputIx = 3 } ]
             , outputs =
-                [ TxOut { address = address0, coin = Coin  285000000 }
-                , TxOut { address = address1, coin = Coin 1810771919 } ]
+                [ TxOut { address = address0, amount = Coin  285000000 }
+                , TxOut { address = address1, amount = Coin 1810771919 } ]
             }
         ]
     }
@@ -172,8 +172,8 @@ block3 = Block
                 [ TxIn { inputId = inputId0, inputIx = 1 }
                 , TxIn { inputId = inputId1, inputIx = 0 } ]
             , outputs =
-                [ TxOut { address = address0, coin = Coin 1404176490 }
-                , TxOut { address = address1, coin = Coin 1004099328 } ]
+                [ TxOut { address = address0, amount = Coin 1404176490 }
+                , TxOut { address = address1, amount = Coin 1004099328 } ]
             }
         ]
     }
@@ -209,11 +209,11 @@ block4 = Block
             , outputs =
                 [ TxOut
                     { address = addr0
-                    , coin = Coin 3841254542346
+                    , amount = Coin 3841254542346
                     }
                 , TxOut
                     { address = addr1
-                    , coin = Coin 2700667457
+                    , amount = Coin 2700667457
                     }
                 ]
             }
@@ -227,11 +227,11 @@ block4 = Block
               , outputs =
                   [ TxOut
                       { address = addr2
-                      , coin = Coin 3832107959251
+                      , amount = Coin 3832107959251
                       }
                   , TxOut
                       { address = addr3
-                      , coin = Coin 11823271860
+                      , amount = Coin 11823271860
                       }
                   ]
             }
