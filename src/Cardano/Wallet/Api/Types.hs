@@ -35,6 +35,8 @@ module Cardano.Wallet.Api.Types
     , WalletPostData (..)
     , WalletPutData (..)
     , WalletPutPassphraseData (..)
+    , CreateTransactionData (..)
+    , Transaction
 
     -- * Limits
     , passphraseMinLength
@@ -91,12 +93,16 @@ import Data.Aeson
     )
 import Data.ByteString.Base58
     ( bitcoinAlphabet, decodeBase58, encodeBase58 )
+import Data.Quantity
+    ( Quantity (..) )
 import Data.Text
     ( Text )
 import GHC.Generics
     ( Generic )
 import GHC.TypeLits
     ( Nat, Symbol )
+import Numeric.Natural
+    ( Natural )
 
 import qualified Data.Aeson as Aeson
 import qualified Data.Aeson.Types as Aeson
@@ -139,6 +145,18 @@ data WalletPutPassphraseData = WalletPutPassphraseData
     { oldPassphrase :: !(ApiT (Passphrase "encryption"))
     , newPassphrase :: !(ApiT (Passphrase "encryption"))
     } deriving (Eq, Generic, Show)
+
+data CreateTransactionData = CreateTransactionData
+    { _targets :: ![TargetOutput]
+    , _passphrase :: !(ApiT (Passphrase "encryption"))
+    } deriving (Generic, Show)
+
+data TargetOutput = TargetOutput
+    { _address :: !(ApiT Address)
+    , _amount :: !(Quantity "lovelace" Natural)
+    } deriving (Generic, Show)
+
+data Transaction
 
 {-------------------------------------------------------------------------------
                               Polymorphic Types
@@ -359,6 +377,11 @@ walletStateOptions = taggedSumTypeOptions $ TaggedObjectOptions
     { _tagFieldName = "status"
     , _contentsFieldName = "progress"
     }
+
+instance FromJSON TargetOutput where
+    parseJSON = genericParseJSON defaultRecordTypeOptions
+instance ToJSON TargetOutput where
+    toJSON = genericToJSON defaultRecordTypeOptions
 
 {-------------------------------------------------------------------------------
                                 Aeson Options
