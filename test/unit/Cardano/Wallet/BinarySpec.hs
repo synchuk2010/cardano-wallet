@@ -10,7 +10,16 @@ module Cardano.Wallet.BinarySpec
 import Prelude
 
 import Cardano.Wallet.Binary
-    ( decodeBlock, decodeBlockHeader, decodeTx, encodeTx, txId )
+    ( decodeBlock
+    , decodeBlockHeader
+    , decodeSignedTx
+    , decodeTx
+    , decodeTxWitness
+    , encodeSignedTx
+    , encodeTx
+    , encodeTxWitness
+    , txId
+    )
 import Cardano.Wallet.Primitive.Types
     ( Address (..)
     , Block (..)
@@ -108,6 +117,22 @@ spec = do
                     "d30d37f1f8674c6c33052826fdc5bc19\
                     \8e3e95c150364fd775d4bc663ae6a9e6"
             hash `shouldBe` hash'
+
+    describe "Encoding Tx Witness" $ do
+        let txs = Set.toList (transactions block2 <> transactions block3)
+
+        let roundTripTx tx = do
+                let bytes = CBOR.toLazyByteString (encodeSignedTx tx)
+                let tx' = unsafeDeserialiseFromBytes decodeSignedTx bytes
+                tx `shouldBe` tx'
+        it "(decode . encode) succeeds" $ do
+            let bytes = CBOR.toLazyByteString (encodeTxWitness undefined)
+            let res = CBOR.deserialiseFromBytes decodeTxWitness bytes
+            (fmap snd res) `shouldBe` (Right ())
+
+        it "(decode . encode) succeeds (signed Tx)" $ do
+            roundTripTx (txs !! 0)
+
 
 -- A mainnet block header
 blockHeader1 :: BlockHeader

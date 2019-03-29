@@ -22,10 +22,14 @@ module Cardano.Wallet.Binary
       decodeBlock
     , decodeBlockHeader
     , decodeTx
+    , decodeTxWitness
+    , decodeSignedTx
 
     -- * Encoding
     , encodeTx
     , encodeAddress
+    , encodeTxWitness
+    , encodeSignedTx
 
     -- * Hashing
     , txId
@@ -496,6 +500,23 @@ encodeAddressPayload payload = mempty
     <> CBOR.encodeBytes payload
     <> CBOR.encodeWord32 (crc32 payload)
 
+
+encodeSignedTx :: Tx -> CBOR.Encoding
+encodeSignedTx tx = mempty
+    <> CBOR.encodeListLen 2
+    <> encodeTx tx
+    <> encodeList encodeTxWitness [tx]
+
+
+--data Witness = PubKeyWitness | ScriptWitness | RedeemWitness
+
+encodeTxWitness :: Tx -> CBOR.Encoding
+encodeTxWitness _tx = mempty
+    <> CBOR.encodeListLen 2
+    <> CBOR.encodeWord8 0 -- PK Witness
+    <> CBOR.encodeTag 0 -- what is this?
+    <> CBOR.encodeBytes "" -- Is this the actual witness maybe?
+
 encodeTx :: Tx -> CBOR.Encoding
 encodeTx tx = mempty
     <> CBOR.encodeListLen 3
@@ -600,3 +621,9 @@ decodeListIndef decodeOne = do
 blake2b256 :: forall tag. CBOR.Encoding -> Hash tag
 blake2b256 =
     Hash . BA.convert . hash @_ @Blake2b_256 . CBOR.toStrictByteString
+
+
+encodeList :: (a -> CBOR.Encoding) -> [a] -> CBOR.Encoding
+encodeList encodeOne l = mempty
+    <> CBOR.encodeListLen (fromIntegral $ length l)
+    <> foldl (\a b -> (a <> encodeOne b)) mempty l
