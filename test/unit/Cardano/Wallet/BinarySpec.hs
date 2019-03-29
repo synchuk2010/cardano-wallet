@@ -119,18 +119,22 @@ spec = do
             hash `shouldBe` hash'
 
     describe "Encoding Tx Witness" $ do
-        let txs = Set.toList (transactions block2 <> transactions block3)
 
-        let roundTripTx tx = do
-                let bytes = CBOR.toLazyByteString (encodeSignedTx tx)
-                let tx' = unsafeDeserialiseFromBytes decodeSignedTx bytes
-                tx `shouldBe` tx'
         it "(decode . encode) succeeds" $ do
             let bytes = CBOR.toLazyByteString (encodeTxWitness undefined)
             let res = CBOR.deserialiseFromBytes decodeTxWitness bytes
             (fmap snd res) `shouldBe` (Right ())
 
-        it "(decode . encode) succeeds (signed Tx)" $ do
+
+
+    describe "Encoding Signed Tx" $ do
+        let txs = Set.toList (transactions block2 <> transactions block3)
+        let roundTripTx tx = do
+                let bytes = CBOR.toLazyByteString (encodeSignedTx tx)
+                let tx' = unsafeDeserialiseFromBytes decodeSignedTx bytes
+                tx `shouldBe` tx'
+
+        it "(encode . decode) = pure" $ do
             roundTripTx (txs !! 0)
 
 
